@@ -13,8 +13,8 @@ import {
   Checkbox,
   Form,
 } from 'semantic-ui-react'
-import FileButton from 'src/components/Elements/FileButton'
-import BatteryChargeTable from 'src/components/Elements/BatteryChargeTable'
+import FileButton from '../../components/Elements/FileButton'
+import BatteryChargeTable from '../../components/Elements/BatteryChargeTable'
 import HomerFormFields from './HomerFormFields'
 
 const FileUploadErrors = ({ fileErrors }) => {
