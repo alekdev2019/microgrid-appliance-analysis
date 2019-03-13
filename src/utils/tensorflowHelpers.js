@@ -156,9 +156,19 @@ export function calculatePlottablePredictedVsActualData(trainingData, model) {
   const rawTestFeatures = tf.tensor2d(testFeatures)
   const normalized_feature = normalizeTensor(rawTestFeatures, dataMean, dataStd)
   const tensors = tf.split(normalized_feature, normalized_feature.size / 2, 0)
-  tensors.forEach(tensor => {
-    const prediction = model.predict(tensor).dataSync()
-    predictions.push(prediction)
+  tensors.forEach( (tensor, n) => {
+    console.log('tensor: ', tensor)
+    if (n == 0) {
+      const prediction = model.predict(tensor).dataSync()
+      predictions.push(prediction)
+      console.log('predictions: ', predictions)
+    } else {      
+      const newTensor = tf.tensor2d([[testFeatures[n][0], predictions[n-1][0]]])
+      const normalized_tensor = normalizeTensor(newTensor, dataMean, dataStd)
+      const prediction = model.predict(normalized_tensor).dataSync()
+      predictions.push(prediction)
+    }
+    
   })
   const t1 = performance.now()
   console.log('predict time: ', t1 - t0)
