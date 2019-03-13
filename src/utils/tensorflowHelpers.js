@@ -149,21 +149,22 @@ export function calculatePlottablePredictedVsActualData(trainingData, model) {
     return []
   }
   const { trainFeatures, testFeatures, testTarget } = trainingData  
+  const t0 = performance.now()
   const rawTrainFeatures = tf.tensor2d(trainFeatures)
   const { dataMean, dataStd } = determineMeanAndStddev(rawTrainFeatures)
   const predictions = [];
-  testFeatures.forEach(value=>{
-    const t0 = performance.now()
-    const testTensor = tf.tensor2d([value])
-    const normalized_tensor = normalizeTensor(testTensor, dataMean, dataStd)
-    const prediction = model.predict(normalized_tensor).dataSync()
-    const t1 = performance.now()
-    console.log('predict time: ', t1 - t0)
+  const rawTestFeatures = tf.tensor2d(testFeatures)
+  const normalized_feature = normalizeTensor(rawTestFeatures, dataMean, dataStd)
+  const tensors = tf.split(normalized_feature, normalized_feature.size / 2, 0)
+  tensors.forEach(tensor => {
+    const prediction = model.predict(tensor).dataSync()
     predictions.push(prediction)
-  });
+  })
+  const t1 = performance.now()
+  console.log('predict time: ', t1 - t0)
   return _.map(testTarget, (target, targetIndex) => {
     return { actual: target[0], predicted: predictions[targetIndex][0]}
-  })
+  })  
 }
 
 export function calculatePlottableReferenceLine(trainingData) {
