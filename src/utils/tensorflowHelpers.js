@@ -157,27 +157,43 @@ export function calculatePlottablePredictedVsActualData(trainingData, model) {
   const rawTrainFeatures = tf.tensor2d(trainFeatures)
   const { dataMean, dataStd } = determineMeanAndStddev(rawTrainFeatures)
   const predictions = [];
-  rawFeatures.forEach( (testElement, n) => {    
+  const chargePredictions = []
+  const chargeActuals = []
+  const dischargePredictions = []
+  const dischargeActuals = []
+  rawFeatures.forEach( (testElement, n) => {  
+    let tensor_data
     if (n == 0) {
-      const newTensor = tf.tensor2d([testElement])
-      const normalized_tensor = normalizeTensor(newTensor, dataMean, dataStd)
-      const prediction = model.predict(normalized_tensor).dataSync()
-      const clampedPrediction = _.clamp(prediction, batteryMinEnergyContent, batteryMaxEnergyContent)
-      predictions.push(clampedPrediction)
+      tensor_data = testElement          
     } else {      
-      const tensor_data = new Float32Array(2)
+      tensor_data = new Float32Array(2)
       tensor_data[0] = testElement[0]
       tensor_data[1] = predictions[n-1]
-      const newTensor = tf.tensor2d([tensor_data])      
-      const normalized_tensor = normalizeTensor(newTensor, dataMean, dataStd)
-      const prediction = model.predict(normalized_tensor).dataSync()
-      const clampedPrediction = _.clamp(prediction, batteryMinEnergyContent, batteryMaxEnergyContent)
-      predictions.push(clampedPrediction)
     }
-        
-  })
+    const newTensor = tf.tensor2d([testElement])  
+    const normalized_tensor = normalizeTensor(newTensor, dataMean, dataStd)
+    const prediction = model.predict(normalized_tensor).dataSync()
+    const clampedPrediction = _.clamp(prediction, batteryMinEnergyContent, batteryMaxEnergyContent)
+    predictions.push(clampedPrediction)
+    const hours = n % 24
+    if (hours >=6 && hours < 18) {
+      chargePredictions.push([tensor_data[0], clampedPrediction])
+      chargeActuals.push([tensor_data[0], tensor_data[1]])
+    } else {
+      dischargePredictions.push([tensor_data[0], clampedPrediction])
+      dischargeActuals.push([tensor_data[0], tensor_data[1]])
+    }
+  })  
   const t1 = performance.now()
   console.log('predict time: ', t1 - t0)
+  const chargePredictionsTensor = tf.tensor2d(chargePredictions)
+  const chargeActualsTensor = tf.tensor2d(chargeActuals)
+  const dischargePredictionsTensor = tf.tensor2d(dischargePredictions)
+  const dischargeAcutalsTensor = tf.tensor2d(dischargeActuals)
+  const chargeMSE = tf.losses.meanSquaredError(chargeActualsTensor, chargePredictionsTensor)
+  const dischargeMSE = tf.losses.meanSquaredError(dischargeAcutalsTensor, dischargePredictionsTensor)
+  console.log('Charge Mean Square Error:', chargeMSE.dataSync())
+  console.log('Discharge Mean Square Error:', dischargeMSE.dataSync())  
   return _.map(rawTargets, (target, targetIndex) => {
     return { actual: target[0], predicted: predictions[targetIndex]}
   })  
